@@ -1,3 +1,12 @@
+## 1.6.1
+
+* Make the pedantic dev_dependency explicit.
+
+## 1.6.0
+
+* Support for retrieving the downloads directory was added.
+  The call for this is `getDownloadsDirectory`.
+
 ## 1.5.1
 
 * Remove the deprecated `author:` field from pubspec.yaml

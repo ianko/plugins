@@ -1,3 +1,11 @@
+## 0.4.5+4
+
+* Make the pedantic dev_dependency explicit.
+
+## 0.4.5+3
+
+* Fixed issue where callback lookup would fail while running in the background.
+
 ## 0.4.5+2
 
 * Remove the deprecated `author:` field from pubspec.yaml
