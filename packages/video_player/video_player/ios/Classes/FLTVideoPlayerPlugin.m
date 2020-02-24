@@ -524,7 +524,7 @@ static inline CGFloat radiansToDegrees(CGFloat radians) {
     videoData.videoId = [argsMap[@"videoId"] isEqual:[NSNull null]] ? nil : argsMap[@"videoId"];
     videoData.videoTitle = [argsMap[@"videoTitle"] isEqual:[NSNull null]] ? nil : argsMap[@"videoTitle"];
     videoData.videoSeries = [argsMap[@"videoSeries"] isEqual:[NSNull null]] ? nil : argsMap[@"videoSeries"];
-      videoData.videoVariantName = [argsMap[@"videoVariantName"] isEqual:[NSNull null]] ? nil : argsMap[@"videoVariantName"];
+    videoData.videoVariantName = [argsMap[@"videoVariantName"] isEqual:[NSNull null]] ? nil : argsMap[@"videoVariantName"];
     videoData.videoVariantId = [argsMap[@"videoVariantId"] isEqual:[NSNull null]] ? nil : argsMap[@"videoVariantId"];
     videoData.videoLanguageCode = [argsMap[@"videoLanguageCode"] isEqual:[NSNull null]] ? nil : argsMap[@"videoLanguageCode"];
     videoData.videoContentType = [argsMap[@"videoContentType"] isEqual:[NSNull null]] ? nil : argsMap[@"videoContentType"];
