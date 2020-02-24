@@ -1,6 +1,7 @@
 // Copyright 2017 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
+library video_player;
 
 import 'dart:async';
 import 'dart:io';
@@ -16,6 +17,23 @@ export 'package:video_player_platform_interface/video_player_platform_interface.
 
 import 'src/closed_caption_file.dart';
 export 'src/closed_caption_file.dart';
+
+import 'src/mux.dart';
+export 'src/mux.dart';
+
+/// Mux Analytics
+extension MuxAnalytics on VideoPlayerController {
+  /// Sets the configurations for Mux
+  Future<void> setupMux(Mux params) async {
+    await _creatingCompleter.future;
+
+    const MethodChannel _channel = MethodChannel('flutter.io/videoPlayer');
+    return _channel.invokeMethod<void>('setupMux', <String, dynamic>{
+      'textureId': textureId,
+      ...params.asMap,
+    });
+  }
+}
 
 final VideoPlayerPlatform _videoPlayerPlatform = VideoPlayerPlatform.instance
   // This will clear all open videos on the platform when a full restart is

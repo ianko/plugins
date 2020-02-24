@@ -227,6 +227,21 @@ class _BumbleBeeRemoteVideoState extends State<_BumbleBeeRemoteVideo> {
     });
     _controller.setLooping(true);
     _controller.initialize();
+
+    _controller.setupMux(Mux(
+      playerName: 'Flutter Demo',
+      envKey: 'f79842543033c226c5d396a7d',
+      viewerUserId: 'fanhero_user_id',
+      pageType: MuxPageType.watchpage,
+      experimentName: 'Video Player Demo',
+      playerInitTime: DateTime.now(),
+      videoId: 'fanhero_video_id',
+      videoTitle: 'FanHero Demo Video',
+      videoSeries: 'FanHero Demo Series',
+      videoStreamType: MuxVideoStreamType.onDemand,
+      videoDuration: _controller?.value?.duration,
+      videoCdn: 'FanHero CDN',
+    ));
   }
 
   @override

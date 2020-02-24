@@ -5,6 +5,7 @@
 #import "FLTVideoPlayerPlugin.h"
 #import <AVFoundation/AVFoundation.h>
 #import <GLKit/GLKit.h>
+@import MUXSDKStats;
 
 #if !__has_feature(objc_arc)
 #error Code Requires ARC.
@@ -500,6 +501,44 @@ static inline CGFloat radiansToDegrees(CGFloat radians) {
     } else {
       result(FlutterMethodNotImplemented);
     }
+  } else if ([@"setupMux" isEqualToString:call.method]) {
+    NSDictionary* argsMap = call.arguments;
+    int64_t textureId = ((NSNumber*)argsMap[@"textureId"]).unsignedIntegerValue;
+    FLTVideoPlayer* player = _players[@(textureId)];
+
+    AVPlayerViewController* playerViewController = [AVPlayerViewController new];
+    playerViewController.player = player.player;
+
+    // Environment and player data that persists until the player is destroyed
+    MUXSDKCustomerPlayerData* playerData = [[MUXSDKCustomerPlayerData alloc] initWithEnvironmentKey:argsMap[@"envKey"]];
+    playerData.playerName = [argsMap[@"playerName"] isEqual:[NSNull null]] ? nil : argsMap[@"playerName"];
+    playerData.viewerUserId = [argsMap[@"viewerUserId"] isEqual:[NSNull null]] ? nil : argsMap[@"viewerUserId"];
+    playerData.experimentName = [argsMap[@"experimentName"] isEqual:[NSNull null]] ? nil : argsMap[@"experimentName"];
+    playerData.playerVersion = [argsMap[@"playerVersion"] isEqual:[NSNull null]] ? nil : argsMap[@"playerVersion"];
+    playerData.pageType = [argsMap[@"pageType"] isEqual:[NSNull null]] ? nil : argsMap[@"pageType"];
+    playerData.subPropertyId = [argsMap[@"subPropertyId"] isEqual:[NSNull null]] ? nil : argsMap[@"subPropertyId"];
+    playerData.playerInitTime = [argsMap[@"playerInitTime"] isEqual:[NSNull null]] ? nil : argsMap[@"playerInitTime"];
+
+    // Video metadata (cleared with videoChangeForPlayer:withVideoData:)
+    MUXSDKCustomerVideoData* videoData = [MUXSDKCustomerVideoData new];
+    videoData.videoId = [argsMap[@"videoId"] isEqual:[NSNull null]] ? nil : argsMap[@"videoId"];
+    videoData.videoTitle = [argsMap[@"videoTitle"] isEqual:[NSNull null]] ? nil : argsMap[@"videoTitle"];
+    videoData.videoSeries = [argsMap[@"videoSeries"] isEqual:[NSNull null]] ? nil : argsMap[@"videoSeries"];
+      videoData.videoVariantName = [argsMap[@"videoVariantName"] isEqual:[NSNull null]] ? nil : argsMap[@"videoVariantName"];
+    videoData.videoVariantId = [argsMap[@"videoVariantId"] isEqual:[NSNull null]] ? nil : argsMap[@"videoVariantId"];
+    videoData.videoLanguageCode = [argsMap[@"videoLanguageCode"] isEqual:[NSNull null]] ? nil : argsMap[@"videoLanguageCode"];
+    videoData.videoContentType = [argsMap[@"videoContentType"] isEqual:[NSNull null]] ? nil : argsMap[@"videoContentType"];
+    videoData.videoStreamType = [argsMap[@"videoStreamType"] isEqual:[NSNull null]] ? nil : argsMap[@"videoStreamType"];
+    videoData.videoProducer = [argsMap[@"videoProducer"] isEqual:[NSNull null]] ? nil : argsMap[@"videoProducer"];
+    videoData.videoEncodingVariant = [argsMap[@"videoEncodingVariant"] isEqual:[NSNull null]] ? nil : argsMap[@"videoEncodingVariant"];
+    videoData.videoCdn = [argsMap[@"videoCdn"] isEqual:[NSNull null]] ? nil : argsMap[@"videoCdn"];
+    videoData.videoDuration = [argsMap[@"videoDuration"] isEqual:[NSNull null]] ? nil : (NSNumber*)argsMap[@"videoDuration"];
+
+
+    [MUXSDKStats monitorAVPlayerViewController:playerViewController
+                                withPlayerName:argsMap[@"playerName"]
+                                    playerData:playerData
+                                     videoData:videoData];
   } else {
     NSDictionary* argsMap = call.arguments;
     int64_t textureId = ((NSNumber*)argsMap[@"textureId"]).unsignedIntegerValue;
