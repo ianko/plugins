@@ -70,12 +70,9 @@ afterEvaluate {
 }
 
 dependencies {
-    implementation(name: 'mux', ext: 'aar')
-    // implementation 'com.mux:com.mux.stats.muxcore:2.3.2@aar'
-    // implementation 'com.mux:com.mux.stats.sdk-r2.9.6:2.3.4@aar'
-
     implementation 'com.google.android.exoplayer:exoplayer-core:2.9.6'
     implementation 'com.google.android.exoplayer:exoplayer-hls:2.9.6'
     implementation 'com.google.android.exoplayer:exoplayer-dash:2.9.6'
     implementation 'com.google.android.exoplayer:exoplayer-smoothstreaming:2.9.6'
+    implementation(name: 'mux', ext: 'aar')
 }

@@ -47,7 +47,7 @@ final class VideoPlayer {
 
   public SimpleExoPlayer exoPlayer;
 
-  public Surface surface;
+  private Surface surface;
 
   private final TextureRegistry.SurfaceTextureEntry textureEntry;
 
