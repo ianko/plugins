@@ -5,6 +5,7 @@
 package io.flutter.plugins.videoplayer;
 
 import android.content.Context;
+import android.graphics.Point;
 import android.util.Log;
 import android.util.LongSparseArray;
 import io.flutter.embedding.engine.plugins.FlutterPlugin;
@@ -17,12 +18,17 @@ import io.flutter.plugin.common.MethodChannel.Result;
 import io.flutter.plugin.common.PluginRegistry.Registrar;
 import io.flutter.view.FlutterMain;
 import io.flutter.view.TextureRegistry;
+import com.mux.stats.sdk.core.model.CustomerPlayerData;
+import com.mux.stats.sdk.core.model.CustomerVideoData;
+import com.mux.stats.sdk.muxstats.MuxStatsExoPlayer;
 
 /** Android platform implementation of the VideoPlayerPlugin. */
 public class VideoPlayerPlugin implements MethodCallHandler, FlutterPlugin {
   private static final String TAG = "VideoPlayerPlugin";
   private final LongSparseArray<VideoPlayer> videoPlayers = new LongSparseArray<>();
   private FlutterState flutterState;
+  private MuxStatsExoPlayer muxStatsExoPlayer;
+  private String videoSource;
 
   /** Register this with the v2 embedding for the plugin to respond to lifecycle callbacks. */
   public VideoPlayerPlugin() {}
@@ -77,6 +83,10 @@ public class VideoPlayerPlugin implements MethodCallHandler, FlutterPlugin {
   }
 
   private void onDestroy() {
+    if (muxStatsExoPlayer != null) {
+      muxStatsExoPlayer.release();
+    }
+
     // The whole FlutterView is being destroyed. Here we release resources acquired for all
     // instances
     // of VideoPlayer. Once https://github.com/flutter/flutter/issues/19358 is resolved this may
@@ -113,6 +123,7 @@ public class VideoPlayerPlugin implements MethodCallHandler, FlutterPlugin {
             } else {
               assetLookupKey = flutterState.keyForAsset.get(call.argument("asset"));
             }
+            videoSource = "asset:///" + assetLookupKey;
             player =
                 new VideoPlayer(
                     flutterState.applicationContext,
@@ -123,6 +134,7 @@ public class VideoPlayerPlugin implements MethodCallHandler, FlutterPlugin {
                     null);
             videoPlayers.put(handle.id(), player);
           } else {
+            videoSource = call.argument("uri");
             player =
                 new VideoPlayer(
                     flutterState.applicationContext,
@@ -183,6 +195,41 @@ public class VideoPlayerPlugin implements MethodCallHandler, FlutterPlugin {
         player.dispose();
         videoPlayers.remove(textureId);
         result.success(null);
+        break;
+
+      case "setupMux":
+        CustomerPlayerData playerData = new CustomerPlayerData();
+        playerData.setEnvironmentKey(call.argument("envKey"));
+        playerData.setPlayerName(call.argument("playerName"));
+        playerData.setViewerUserId(call.argument("viewerUserId"));
+        playerData.setExperimentName(call.argument("experimentName"));
+        playerData.setPlayerVersion(call.argument("playerVersion"));
+        playerData.setPageType(call.argument("pageType"));
+        playerData.setSubPropertyId(call.argument("subPropertyId"));
+        playerData.setPlayerInitTime(call.argument("playerInitTime"));
+
+        CustomerVideoData videoData = new CustomerVideoData();
+        videoData.setVideoSourceUrl(videoSource);
+        videoData.setVideoId(call.argument("videoId"));
+        videoData.setVideoTitle(call.argument("videoTitle"));
+        videoData.setVideoSeries(call.argument("videoSeries"));
+        videoData.setVideoVariantName(call.argument("videoVariantName"));
+        videoData.setVideoVariantId(call.argument("videoVariantId"));
+        videoData.setVideoLanguageCode(call.argument("videoLanguageCode"));
+        videoData.setVideoContentType(call.argument("videoContentType"));
+        videoData.setVideoStreamType(call.argument("videoStreamType"));
+        videoData.setVideoProducer(call.argument("videoProducer"));
+        videoData.setVideoEncodingVariant(call.argument("videoEncodingVariant"));
+        videoData.setVideoCdn(call.argument("videoCdn"));
+        videoData.setVideoDuration(call.argument("videoDuration"));
+
+        muxStatsExoPlayer = new MuxStatsExoPlayer(
+          flutterState.applicationContext,
+          player.exoPlayer,
+          call.argument("playerName"),
+          playerData,
+          videoData
+        );
         break;
       default:
         result.notImplemented();
