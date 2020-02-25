@@ -16,6 +16,10 @@ rootProject.allprojects {
     repositories {
         google()
         jcenter()
+
+        flatDir {
+            dirs project(':video_player').file('libs')
+        }
     }
 }
 
@@ -36,13 +40,6 @@ android {
             sourceCompatibility 1.8
             targetCompatibility 1.8
         }
-    }
-
-    dependencies {
-        implementation 'com.google.android.exoplayer:exoplayer-core:2.9.6'
-        implementation 'com.google.android.exoplayer:exoplayer-hls:2.9.6'
-        implementation 'com.google.android.exoplayer:exoplayer-dash:2.9.6'
-        implementation 'com.google.android.exoplayer:exoplayer-smoothstreaming:2.9.6'
     }
 }
 
@@ -70,4 +67,12 @@ afterEvaluate {
             }
         }
     }
+}
+
+dependencies {
+    implementation 'com.google.android.exoplayer:exoplayer-core:2.9.6'
+    implementation 'com.google.android.exoplayer:exoplayer-hls:2.9.6'
+    implementation 'com.google.android.exoplayer:exoplayer-dash:2.9.6'
+    implementation 'com.google.android.exoplayer:exoplayer-smoothstreaming:2.9.6'
+    implementation(name: 'mux', ext: 'aar')
 }
