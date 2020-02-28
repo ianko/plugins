@@ -8,6 +8,9 @@ import android.content.Context;
 import android.graphics.Point;
 import android.util.Log;
 import android.util.LongSparseArray;
+import com.mux.stats.sdk.core.model.CustomerPlayerData;
+import com.mux.stats.sdk.core.model.CustomerVideoData;
+import com.mux.stats.sdk.muxstats.MuxStatsExoPlayer;
 import io.flutter.embedding.engine.plugins.FlutterPlugin;
 import io.flutter.plugin.common.BinaryMessenger;
 import io.flutter.plugin.common.EventChannel;
@@ -18,9 +21,6 @@ import io.flutter.plugin.common.MethodChannel.Result;
 import io.flutter.plugin.common.PluginRegistry.Registrar;
 import io.flutter.view.FlutterMain;
 import io.flutter.view.TextureRegistry;
-import com.mux.stats.sdk.core.model.CustomerPlayerData;
-import com.mux.stats.sdk.core.model.CustomerVideoData;
-import com.mux.stats.sdk.muxstats.MuxStatsExoPlayer;
 
 /** Android platform implementation of the VideoPlayerPlugin. */
 public class VideoPlayerPlugin implements MethodCallHandler, FlutterPlugin {
@@ -34,35 +34,25 @@ public class VideoPlayerPlugin implements MethodCallHandler, FlutterPlugin {
   public VideoPlayerPlugin() {}
 
   private VideoPlayerPlugin(Registrar registrar) {
-    this.flutterState =
-        new FlutterState(
-            registrar.context(),
-            registrar.messenger(),
-            registrar::lookupKeyForAsset,
-            registrar::lookupKeyForAsset,
-            registrar.textures());
+    this.flutterState = new FlutterState(registrar.context(), registrar.messenger(),
+        registrar::lookupKeyForAsset, registrar::lookupKeyForAsset, registrar.textures());
     flutterState.startListening(this);
   }
 
   /** Registers this with the stable v1 embedding. Will not respond to lifecycle events. */
   public static void registerWith(Registrar registrar) {
     final VideoPlayerPlugin plugin = new VideoPlayerPlugin(registrar);
-    registrar.addViewDestroyListener(
-        view -> {
-          plugin.onDestroy();
-          return false; // We are not interested in assuming ownership of the NativeView.
-        });
+    registrar.addViewDestroyListener(view -> {
+      plugin.onDestroy();
+      return false; // We are not interested in assuming ownership of the NativeView.
+    });
   }
 
   @Override
   public void onAttachedToEngine(FlutterPluginBinding binding) {
-    this.flutterState =
-        new FlutterState(
-            binding.getApplicationContext(),
-            binding.getFlutterEngine().getDartExecutor(),
-            FlutterMain::getLookupKeyForAsset,
-            FlutterMain::getLookupKeyForAsset,
-            binding.getFlutterEngine().getRenderer());
+    this.flutterState = new FlutterState(binding.getApplicationContext(),
+        binding.getFlutterEngine().getDartExecutor(), FlutterMain::getLookupKeyForAsset,
+        FlutterMain::getLookupKeyForAsset, binding.getFlutterEngine().getRenderer());
     flutterState.startListening(this);
   }
 
@@ -105,62 +95,44 @@ public class VideoPlayerPlugin implements MethodCallHandler, FlutterPlugin {
       case "init":
         disposeAllPlayers();
         break;
-      case "create":
-        {
-          TextureRegistry.SurfaceTextureEntry handle =
-              flutterState.textureRegistry.createSurfaceTexture();
-          EventChannel eventChannel =
-              new EventChannel(
-                  flutterState.binaryMessenger, "flutter.io/videoPlayer/videoEvents" + handle.id());
+      case "create": {
+        TextureRegistry.SurfaceTextureEntry handle =
+            flutterState.textureRegistry.createSurfaceTexture();
+        EventChannel eventChannel = new EventChannel(
+            flutterState.binaryMessenger, "flutter.io/videoPlayer/videoEvents" + handle.id());
 
-          VideoPlayer player;
-          if (call.argument("asset") != null) {
-            String assetLookupKey;
-            if (call.argument("package") != null) {
-              assetLookupKey =
-                  flutterState.keyForAssetAndPackageName.get(
-                      call.argument("asset"), call.argument("package"));
-            } else {
-              assetLookupKey = flutterState.keyForAsset.get(call.argument("asset"));
-            }
-            videoSource = "asset:///" + assetLookupKey;
-            player =
-                new VideoPlayer(
-                    flutterState.applicationContext,
-                    eventChannel,
-                    handle,
-                    "asset:///" + assetLookupKey,
-                    result,
-                    null);
-            videoPlayers.put(handle.id(), player);
+        VideoPlayer player;
+        if (call.argument("asset") != null) {
+          String assetLookupKey;
+          if (call.argument("package") != null) {
+            assetLookupKey = flutterState.keyForAssetAndPackageName.get(
+                call.argument("asset"), call.argument("package"));
           } else {
-            videoSource = call.argument("uri");
-            player =
-                new VideoPlayer(
-                    flutterState.applicationContext,
-                    eventChannel,
-                    handle,
-                    call.argument("uri"),
-                    result,
-                    call.argument("formatHint"));
-            videoPlayers.put(handle.id(), player);
+            assetLookupKey = flutterState.keyForAsset.get(call.argument("asset"));
           }
-          break;
+          videoSource = "asset:///" + assetLookupKey;
+          player = new VideoPlayer(flutterState.applicationContext, eventChannel, handle,
+              "asset:///" + assetLookupKey, result, null);
+          videoPlayers.put(handle.id(), player);
+        } else {
+          videoSource = call.argument("uri");
+          player = new VideoPlayer(flutterState.applicationContext, eventChannel, handle,
+              call.argument("uri"), result, call.argument("formatHint"));
+          videoPlayers.put(handle.id(), player);
         }
-      default:
-        {
-          long textureId = ((Number) call.argument("textureId")).longValue();
-          VideoPlayer player = videoPlayers.get(textureId);
-          if (player == null) {
-            result.error(
-                "Unknown textureId",
-                "No video player associated with texture id " + textureId,
-                null);
-            return;
-          }
-          onMethodCall(call, result, textureId, player);
-          break;
+        break;
+      }
+      default: {
+        long textureId = ((Number) call.argument("textureId")).longValue();
+        VideoPlayer player = videoPlayers.get(textureId);
+        if (player == null) {
+          result.error(
+              "Unknown textureId", "No video player associated with texture id " + textureId, null);
+          return;
         }
+        onMethodCall(call, result, textureId, player);
+        break;
+      }
     }
   }
 
@@ -198,38 +170,7 @@ public class VideoPlayerPlugin implements MethodCallHandler, FlutterPlugin {
         break;
 
       case "setupMux":
-        CustomerPlayerData playerData = new CustomerPlayerData();
-        playerData.setEnvironmentKey(call.argument("envKey"));
-        playerData.setPlayerName(call.argument("playerName"));
-        playerData.setViewerUserId(call.argument("viewerUserId"));
-        playerData.setExperimentName(call.argument("experimentName"));
-        playerData.setPlayerVersion(call.argument("playerVersion"));
-        playerData.setPageType(call.argument("pageType"));
-        playerData.setSubPropertyId(call.argument("subPropertyId"));
-        playerData.setPlayerInitTime(call.argument("playerInitTime"));
-
-        CustomerVideoData videoData = new CustomerVideoData();
-        videoData.setVideoSourceUrl(videoSource);
-        videoData.setVideoId(call.argument("videoId"));
-        videoData.setVideoTitle(call.argument("videoTitle"));
-        videoData.setVideoSeries(call.argument("videoSeries"));
-        videoData.setVideoVariantName(call.argument("videoVariantName"));
-        videoData.setVideoVariantId(call.argument("videoVariantId"));
-        videoData.setVideoLanguageCode(call.argument("videoLanguageCode"));
-        videoData.setVideoContentType(call.argument("videoContentType"));
-        videoData.setVideoStreamType(call.argument("videoStreamType"));
-        videoData.setVideoProducer(call.argument("videoProducer"));
-        videoData.setVideoEncodingVariant(call.argument("videoEncodingVariant"));
-        videoData.setVideoCdn(call.argument("videoCdn"));
-        videoData.setVideoDuration(call.argument("videoDuration"));
-
-        muxStatsExoPlayer = new MuxStatsExoPlayer(
-          flutterState.applicationContext,
-          player.exoPlayer,
-          call.argument("playerName"),
-          playerData,
-          videoData
-        );
+        setupMux(call, player);
         break;
       default:
         result.notImplemented();
@@ -237,13 +178,82 @@ public class VideoPlayerPlugin implements MethodCallHandler, FlutterPlugin {
     }
   }
 
-  private interface KeyForAssetFn {
-    String get(String asset);
+  private void setupMux(MethodCall call, VideoPlayer player) {
+    CustomerPlayerData playerData = new CustomerPlayerData();
+    playerData.setEnvironmentKey(call.argument("envKey"));
+    playerData.setPlayerName(call.argument("playerName"));
+
+    if (call.argument("viewerUserId") != null)
+      playerData.setViewerUserId(call.argument("viewerUserId"));
+
+    if (call.argument("experimentName") != null)
+      playerData.setExperimentName(call.argument("experimentName"));
+
+    if (call.argument("playerVersion") != null)
+      playerData.setPlayerVersion(call.argument("playerVersion"));
+
+    if (call.argument("pageType") != null)
+      playerData.setPageType(call.argument("pageType"));
+
+    if (call.argument("subPropertyId") != null)
+      playerData.setSubPropertyId(call.argument("subPropertyId"));
+
+    if (call.argument("playerInitTime") != null)
+      playerData.setPlayerInitTime(call.argument("playerInitTime"));
+
+    CustomerVideoData videoData = new CustomerVideoData();
+    videoData.setVideoSourceUrl(videoSource);
+
+    if (call.argument("videoId") != null)
+      videoData.setVideoId(call.argument("videoId"));
+    if (call.argument("videoTitle") != null)
+      videoData.setVideoTitle(call.argument("videoTitle"));
+    if (call.argument("videoSeries") != null)
+      videoData.setVideoSeries(call.argument("videoSeries"));
+    if (call.argument("videoVariantName") != null)
+      videoData.setVideoVariantName(call.argument("videoVariantName"));
+    if (call.argument("videoVariantId") != null)
+      videoData.setVideoVariantId(call.argument("videoVariantId"));
+    if (call.argument("videoLanguageCode") != null)
+      videoData.setVideoLanguageCode(call.argument("videoLanguageCode"));
+    if (call.argument("videoContentType") != null)
+      videoData.setVideoContentType(call.argument("videoContentType"));
+    if (call.argument("videoStreamType") != null)
+      videoData.setVideoStreamType(call.argument("videoStreamType"));
+    if (call.argument("videoProducer") != null)
+      videoData.setVideoProducer(call.argument("videoProducer"));
+    if (call.argument("videoEncodingVariant") != null)
+      videoData.setVideoEncodingVariant(call.argument("videoEncodingVariant"));
+    if (call.argument("videoCdn") != null)
+      videoData.setVideoCdn(call.argument("videoCdn"));
+    if (call.argument("videoDuration") != null)
+      videoData.setVideoDuration(castVideoDuration(call.argument("videoDuration")));
+
+    muxStatsExoPlayer = new MuxStatsExoPlayer(flutterState.applicationContext, player.exoPlayer,
+        call.argument("playerName"), playerData, videoData);
   }
 
-  private interface KeyForAssetAndPackageName {
-    String get(String asset, String packageName);
+  private Long castVideoDuration(Object value) {
+    Long videoDuration;
+
+    // The type of object that comes in is dependant on the size of the
+    // value.
+    if (value instanceof Integer) {
+      videoDuration = new Long((Integer) value);
+    } else if (value instanceof Short) {
+      videoDuration = new Long((Short) value);
+    } else if (value instanceof Byte) {
+      videoDuration = new Long((Byte) value);
+    } else {
+      videoDuration = (Long) value;
+    }
+
+    return videoDuration;
   }
+
+  private interface KeyForAssetFn { String get(String asset); }
+
+  private interface KeyForAssetAndPackageName { String get(String asset, String packageName); }
 
   private static final class FlutterState {
     private final Context applicationContext;
@@ -253,12 +263,8 @@ public class VideoPlayerPlugin implements MethodCallHandler, FlutterPlugin {
     private final TextureRegistry textureRegistry;
     private final MethodChannel methodChannel;
 
-    FlutterState(
-        Context applicationContext,
-        BinaryMessenger messenger,
-        KeyForAssetFn keyForAsset,
-        KeyForAssetAndPackageName keyForAssetAndPackageName,
-        TextureRegistry textureRegistry) {
+    FlutterState(Context applicationContext, BinaryMessenger messenger, KeyForAssetFn keyForAsset,
+        KeyForAssetAndPackageName keyForAssetAndPackageName, TextureRegistry textureRegistry) {
       this.applicationContext = applicationContext;
       this.binaryMessenger = messenger;
       this.keyForAsset = keyForAsset;
