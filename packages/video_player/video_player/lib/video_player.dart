@@ -25,8 +25,13 @@ export 'src/mux.dart';
 extension MuxAnalytics on VideoPlayerController {
   /// Sets the configurations for Mux
   Future<void> setupMux(Mux params) async {
-    await _creatingCompleter.future;
+    if (!value.initialized || _isDisposed) {
+      return;
+    }
 
+    if (_creatingCompleter != null) {
+      await _creatingCompleter.future;
+    }
     const MethodChannel _channel = MethodChannel('flutter.io/videoPlayer');
     return _channel.invokeMethod<void>('setupMux', <String, dynamic>{
       'textureId': textureId,
