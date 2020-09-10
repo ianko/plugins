@@ -15,7 +15,8 @@
 @property(nullable, copy, nonatomic) ShouldAddStorePayment shouldAddStorePayment;
 @property(nullable, copy, nonatomic) UpdatedDownloads updatedDownloads;
 
-@property(strong, nonatomic) NSMutableDictionary *transactionsSetter;
+@property(strong, nonatomic)
+    NSMutableDictionary<NSString *, NSMutableArray<SKPaymentTransaction *> *> *transactionsSetter;
 
 @end
 
@@ -31,21 +32,28 @@
                         updatedDownloads:(nullable UpdatedDownloads)updatedDownloads {
   self = [super init];
   if (self) {
-    self.queue = queue;
-    self.transactionsUpdated = transactionsUpdated;
-    self.transactionsRemoved = transactionsRemoved;
-    self.restoreTransactionFailed = restoreTransactionFailed;
-    self.paymentQueueRestoreCompletedTransactionsFinished = restoreCompletedTransactionsFinished;
-    self.shouldAddStorePayment = shouldAddStorePayment;
-    self.updatedDownloads = updatedDownloads;
-    self.transactionsSetter = [NSMutableDictionary new];
-    [queue addTransactionObserver:self];
+    _queue = queue;
+    _transactionsUpdated = transactionsUpdated;
+    _transactionsRemoved = transactionsRemoved;
+    _restoreTransactionFailed = restoreTransactionFailed;
+    _paymentQueueRestoreCompletedTransactionsFinished = restoreCompletedTransactionsFinished;
+    _shouldAddStorePayment = shouldAddStorePayment;
+    _updatedDownloads = updatedDownloads;
+    _transactionsSetter = [NSMutableDictionary dictionary];
   }
   return self;
 }
 
-- (void)addPayment:(SKPayment *)payment {
+- (void)startObservingPaymentQueue {
+  [_queue addTransactionObserver:self];
+}
+
+- (BOOL)addPayment:(SKPayment *)payment {
+  if (self.transactionsSetter[payment.productIdentifier]) {
+    return NO;
+  }
   [self.queue addPayment:payment];
+  return YES;
 }
 
 - (void)finishTransaction:(SKPaymentTransaction *)transaction {
@@ -61,13 +69,25 @@
 }
 
 #pragma mark - observing
+
 // Sent when the transaction array has changed (additions or state changes).  Client should check
 // state of transactions and finish as appropriate.
 - (void)paymentQueue:(SKPaymentQueue *)queue
     updatedTransactions:(NSArray<SKPaymentTransaction *> *)transactions {
   for (SKPaymentTransaction *transaction in transactions) {
-    if (transaction.transactionIdentifier) {
-      [self.transactionsSetter setObject:transaction forKey:transaction.transactionIdentifier];
+    if (transaction.transactionState != SKPaymentTransactionStatePurchasing) {
+      // Use product identifier instead of transaction identifier for few reasons:
+      // 1. Only transactions with purchased state and failed state will have a transaction id, it
+      //    will become impossible for clients to finish deferred transactions when needed.
+      // 2. Using product identifiers can help prevent clients from purchasing the same
+      //    subscription more than once by accident.
+      NSMutableArray *transactionArray =
+          [self.transactionsSetter objectForKey:transaction.payment.productIdentifier];
+      if (transactionArray == nil) {
+        transactionArray = [NSMutableArray array];
+      }
+      [transactionArray addObject:transaction];
+      self.transactionsSetter[transaction.payment.productIdentifier] = transactionArray;
     }
   }
   // notify dart through callbacks.
@@ -77,6 +97,23 @@
 // Sent when transactions are removed from the queue (via finishTransaction:).
 - (void)paymentQueue:(SKPaymentQueue *)queue
     removedTransactions:(NSArray<SKPaymentTransaction *> *)transactions {
+  for (SKPaymentTransaction *transaction in transactions) {
+    NSString *productId = transaction.payment.productIdentifier;
+
+    if ([self.transactionsSetter objectForKey:productId] == nil) {
+      continue;
+    }
+
+    NSPredicate *predicate = [NSPredicate
+        predicateWithFormat:@"transactionIdentifier == %@", transaction.transactionIdentifier];
+    NSArray<SKPaymentTransaction *> *filteredTransactions =
+        [self.transactionsSetter[productId] filteredArrayUsingPredicate:predicate];
+    [self.transactionsSetter[productId] removeObjectsInArray:filteredTransactions];
+
+    if (!self.transactionsSetter[productId] || !self.transactionsSetter[productId].count) {
+      [self.transactionsSetter removeObjectForKey:productId];
+    }
+  }
   self.transactionsRemoved(transactions);
 }
 
@@ -105,10 +142,14 @@
   return (self.shouldAddStorePayment(payment, product));
 }
 
+- (NSArray<SKPaymentTransaction *> *)getUnfinishedTransactions {
+  return self.queue.transactions;
+}
+
 #pragma mark - getter
 
-- (NSDictionary *)transactions {
-  return self.transactionsSetter;
+- (NSDictionary<NSString *, NSMutableArray<SKPaymentTransaction *> *> *)transactions {
+  return [self.transactionsSetter copy];
 }
 
 @end
